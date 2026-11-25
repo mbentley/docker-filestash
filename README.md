@@ -1,6 +1,6 @@
 # mbentley/filestash
 
-docker image based on alpine:latest to run [Filestash](https://github.com/mickael-kerjean/filestash) using the official prebuilt, statically linked binary, running as a non-root user.
+docker image based on alpine:latest to run [Filestash](https://github.com/mickael-kerjean/filestash), built from source as a statically linked binary (the same way upstream builds its release binaries), running as a non-root user.
 
 ## Tags
 
@@ -66,11 +66,11 @@ docker build --progress plain -t mbentley/filestash .
 
 ### Cache busting
 
-Filestash doesn't publish versioned releases, so the image always downloads the `latest` binary. To avoid re-downloading it when nothing has changed, pass the size of the current binaries (from a `HEAD` request, so nothing is downloaded) as the `FILESTASH_SIZE` build arg. The download layer is only rebuilt when the size changes:
+Filestash doesn't publish versioned releases, so the image builds from `master` by default. Without a build arg, the clone layer is cached and won't pick up new commits. Pass the latest commit id on `master` as the `FILESTASH_REF` build arg so the clone and build only re-run when `master` changes:
 
 ```
-FILESTASH_SIZE="$(for ARCH in x86_64 aarch64; do curl -fsSI "https://downloads.filestash.app/latest/filestash_linux_${ARCH}.bin" | awk 'tolower($1)=="content-length:" {print $2}' | tr -d '\r'; done | paste -sd '-' -)"
-docker build --progress plain --build-arg FILESTASH_SIZE="${FILESTASH_SIZE}" -t mbentley/filestash .
+FILESTASH_REF="$(git ls-remote https://github.com/mickael-kerjean/filestash refs/heads/master | cut -f1)"
+docker build --progress plain --build-arg FILESTASH_REF="${FILESTASH_REF}" -t mbentley/filestash .
 ```
 
-A new build that happens to be exactly the same size won't be detected; an occasional `--no-cache` build covers that.
+`FILESTASH_REF` can also be set to any branch or commit id to build that version.
